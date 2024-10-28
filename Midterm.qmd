@@ -1,0 +1,193 @@
+---
+title: "Midterm"
+author: "Haoyu Yu"
+format: html
+editor: visual
+embed-resources: true
+---
+
+# Introduction
+
+The dataset used in this analysis contains salary information for individuals working in the global AI and tech industry, spanning different roles, experience levels, employment types, and locations. The dataset includes data points such as salary (in both local currency and converted to USD), remote work ratios, company sizes, and the employee’s country of residence. As the AI and tech industry continues to grow, understanding salary distribution and the factors that influence it is crucial for both employers and employees. Several variables can impact salary, such as experience level, remote work, job title, company size, and geographical location. For organizations, knowing these factors can help in offering competitive salaries, while for professionals, it assists in career planning and salary negotiations.The dataset used in this analysis contains salary information for individuals working in the global AI and tech industry, spanning different roles, experience levels, employment types, and locations. The dataset includes data points such as salary (in both local currency and converted to USD), remote work ratios, company sizes, and the employee’s country of residence.
+
+As the AI and tech industry continues to grow, understanding salary distribution and the factors that influence it is crucial for both employers and employees. Several variables can impact salary, such as experience level, remote work, job title, company size, and geographical location. For organizations, knowing these factors can help in offering competitive salaries, while for professionals, it assists in career planning and salary negotiations.
+
+**Formulated Question**: What are the key factors that influence salary levels in the global AI and tech industry, and how do these factors interact to shape salary.
+
+# method
+
+## Data Acquisition
+
+The dataset used in this analysis was obtained from the website [AI Jobs Salaries](https://aijobs.net/salaries/download/), which provides detailed salary data for various roles in the AI and tech industry. The dataset includes variables such as work year, experience level, job titles, salaries in local currencies and converted to USD, remote work ratios, company size, and employee location.
+
+```{r}
+library(readr)
+library(ggplot2)
+library(dplyr)
+salaries_data <- read.csv("salaries.csv")
+```
+
+## Data Cleaning and Wrangling
+
+Using `dim(salaries_data)` function to determine the dimensions of the dataset. The dataset contains 53,841 pieces of salary data and 11 variables. Using `str(salaries_data)` to determine the data type of each variable. Using `head(salaries_data)` and `tail(salaries_data)` to observe the first few rows and last few rows of data. And then, using `colSums(is.na(salaries_data))` function to view missing data in the dataset. There are no missing data in this dataset.Using `summary(salaries_data)` to check the statistical results of the dataset and look for any unreasonable data.
+
+By observing the dataset, I found that the `job_title` variable is not convenient for statistical analysis because the title of each job is different. The `salary` variable and `salary_currency` variable can be replaced by `salary_in_usd` variable. Therefore, delete `job_title`, `salary` and `salary_currency` variables, making the data set more concise.
+
+```{r}
+salaries_data <- subset(salaries_data, select = -c(job_title, salary, salary_currency))
+```
+
+Since variables `experience_level`, `remote_ratio`,`company_size` and `employee_residence` are categorical variables, these variables are created as factors to facilitate subsequent calls.
+
+```{r}
+salaries_data$experience_level <- as.factor(salaries_data$experience_level)
+salaries_data$remote_ratio <- as.factor(salaries_data$remote_ratio)
+salaries_data$company_size <- as.factor(salaries_data$company_size)
+salaries_data$employee_residence <- as.factor(salaries_data$employee_residence)
+```
+
+# Preliminary Results
+
+## Relationship Between Experience Level and Salary
+
+```{r}
+ggplot(salaries_data, aes(x = experience_level, y = salary_in_usd, fill = experience_level)) +
+  geom_boxplot() +
+  labs(title = "Relationship Between Experience Level and Salary", x = "Experience Level", y = "Salary (USD)") +
+  theme_minimal()
+```
+
+## Relationship Between Remote Work Ratio and Salary
+
+```{r}
+ggplot(salaries_data, aes(x = remote_ratio, y = salary_in_usd, fill = remote_ratio)) +
+  geom_boxplot() +
+  labs(title = "Salary Distribution by Remote Work Ratio (0, 50, 100)", x = "Remote Work Ratio", y = "Salary (USD)") +
+  theme_minimal()
+
+ggplot(salaries_data, aes(x = remote_ratio, y = salary_in_usd, fill = remote_ratio)) +
+  geom_boxplot() +
+  facet_wrap(~ experience_level) +
+  labs(title = "Remote Work Ratio (0, 50, 100) vs Salary by Experience Level", x = "Remote Work Ratio", y = "Salary (USD)") +
+  theme_minimal()
+
+ggplot(salaries_data, aes(x = remote_ratio, y = salary_in_usd, fill = employment_type)) +
+  stat_summary(fun = "mean", geom = "bar", position = "dodge") +
+  labs(title = "Mean Salary by Remote Work Ratio and Employment Type", 
+       x = "Remote Work Ratio", 
+       y = "Mean Salary (USD)", 
+       fill = "Employment Type") +
+  theme_minimal()
+```
+
+##Relationship Between Employment Type and Salary
+
+```{r}
+ggplot(salaries_data, aes(x = employment_type, y = salary_in_usd, fill = employment_type)) +
+  stat_summary(fun = "mean", geom = "bar") +
+  labs(title = "Mean Salary by Employment Type", x = "Employment Type", y = "Mean Salary (USD)") +
+  theme_minimal()
+```
+
+## Relationship Between Company Size and Salary
+
+```{r}
+library(knitr)
+ggplot(salaries_data, aes(x = company_size, y = salary_in_usd, fill = company_size)) +
+  geom_boxplot() +
+  labs(title = "Company Size and Salary", x = "Company Size", y = "Salary (USD)") +
+  theme_minimal()
+
+salary_stats_by_company_size <- salaries_data %>%
+  group_by(company_size) %>% 
+  summarise(
+    mean_salary = mean(salary_in_usd, na.rm = TRUE),  
+    median_salary = median(salary_in_usd, na.rm = TRUE),  
+    salary_sd = sd(salary_in_usd, na.rm = TRUE), 
+    min_salary = min(salary_in_usd, na.rm = TRUE), 
+    max_salary = max(salary_in_usd, na.rm = TRUE), 
+    count = n()  
+  ) %>%
+  arrange(desc(mean_salary)) 
+
+kable(t(salary_stats_by_company_size), caption = "Salary Statistics by Company Size (Mean, Median, SD, Min, Max, Count)")
+
+```
+
+## Relationship Between Company Location and Salary
+
+```{r}
+ggplot(salaries_data, aes(x = reorder(company_location, salary_in_usd, FUN = mean), y = salary_in_usd, fill = company_location)) +
+  stat_summary(fun = "mean", geom = "bar") +
+  labs(title = "Mean Salary by Country", x = "Country", y = "Mean Salary (USD)") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  theme_minimal()
+top_countries_filtered <- salaries_data %>%
+  group_by(company_location) %>% 
+  summarise(
+    mean_salary = mean(salary_in_usd, na.rm = TRUE), 
+    count = n()  
+  ) %>%
+  filter(count > 20) %>%  
+  arrange(desc(mean_salary)) 
+kable(top_countries_filtered, caption = "Countries by Mean Salary (Sample Size > 20)")
+
+different_location_data <- salaries_data %>%
+  filter(employee_residence != company_location)
+```
+
+## Relationship Between Employee Residence and Salary
+
+```{r}
+ggplot(salaries_data, aes(x = reorder(employee_residence, salary_in_usd, FUN = mean), y = salary_in_usd, fill = employee_residence)) +
+  stat_summary(fun = "mean", geom = "bar") +
+  labs(title = "Mean Salary by Country", x = "Country", y = "Mean Salary (USD)") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  theme_minimal()
+top_employee_residence <- salaries_data %>%
+  group_by(employee_residence) %>% 
+  summarise(
+    mean_salary = mean(salary_in_usd, na.rm = TRUE), 
+    count = n()  
+  ) %>%
+  filter(count > 20) %>%  
+  arrange(desc(mean_salary)) 
+kable(top_employee_residence, caption = "Employee Residence by Mean Salary (Sample Size > 20)")
+```
+
+## Relationship Between Work Year and Salary
+
+```{r}
+salary_by_year <- salaries_data %>%
+  group_by(work_year) %>%  # 按年份分组
+  summarise(mean_salary = mean(salary_in_usd, na.rm = TRUE))  # 
+ggplot(salary_by_year, aes(x = work_year, y = mean_salary)) +
+  geom_line(color = "blue", size = 1.2) +  
+  geom_point(color = "red", size = 2) + 
+  labs(title = "Average Salary by Year", x = "Year", y = "Average Salary (USD)") +
+  theme_minimal()
+```
+
+# Conclusion
+
+## Interpret Charts
+
+First, we can find that there is a strong correlation between salary and experience_level. EX(Executive-level / Director) has the highest salary, SE(Senior-level / Expert) has the second highest salary and EN(Entry-level / Junior) has the lowest salary. It is reasonable that income levels increase with experience levels.
+
+Second, jobs that were not remote at all earned the most, while jobs that were half remote and half no remote earned the lowest. Things don't change much after adding experience levels or employment type.
+
+Third, we can find that full-time job has the highest salary, the contract job has the second highest salary and freelance job has the lowest salary. The result is reasonable and explain that salary levels are closely related to employment types.
+
+Fourth, medium companies have the highest average salaries, while small companies have the lowest average salaries. But the SD(standard deviation) of salaries in medium companies is larger than that in large companies, which means that the salary distribution in large companies is more concentrated. In addition, from the perspective of the number of companies, there are far more medium-sized companies than the other two types, so its data is relatively more accurate.
+
+Fifth, the location of the company has a great impact on salaries, and can even vary several times. Since the number of samples in some countries is too small, which affects the final results, countries with sample numbers greater than 20 are selected for ranking. The highest average salary is in the United States, followed by Canada, Egypt and Australia, while the lowest is in India, followed by Portugal and Lithuania. Changing the variable to `employee_residence` does not change the results significantly. This is because only 138 people have different residences and company location.
+
+Final, The average salary shows an overall upward trend over time, and the upward trend slows down from 2021 to 2024.
+
+## Answer the Question
+
+To sum up, I think there are three main factors that affect salaries in the AI field, work year, experience level, and type of employee. As the field matures over time, salaries gradually increase, and as experience levels increase, from a novice to the head of a department, salaries increase. Compared with part-time and freelance work, full-time work and contract work are more professional and have higher thresholds, so their salaries are relatively high.
+
+## Potential and Future Issues
+
+One problem with this data set is that more than 90% of the company data are in the United States, which prevents me from accurately assessing the impact of company address on wages. Finding more data from other countries would make the results more credible.
